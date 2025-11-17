@@ -24,15 +24,37 @@ jobs:
 
       - name: Install Tuist
         run: |
-          curl -Ls https://install.tuist.io | bash
-          echo "$HOME/.tuist/bin" >> "$GITHUB_PATH"
+          set -euo pipefail
+          if ! command -v tuist >/dev/null 2>&1; then
+            export HOMEBREW_NO_AUTO_UPDATE=1
+            brew install tuist || brew upgrade tuist
+          fi
+          tuist version
 
       - name: Install xcpretty
         run: gem install xcpretty
 
+      - name: Tuist install
+        working-directory: MyApp
+        run: |
+          echo "Installing Tuist dependencies..."
+          tuist install --verbose || {
+            echo "tuist install failed, checking error..."
+            exit 1
+          }
+          echo "Verifying dependencies were installed..."
+          if [ ! -f "Tuist/Package.resolved" ]; then
+            echo "Error: Package.resolved not found after tuist install"
+            exit 1
+          fi
+          echo "Dependencies installed successfully"
+
       - name: Generate Xcode workspace
         working-directory: MyApp
         run: tuist generate --no-open
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
 
       - name: Build
         working-directory: MyApp
@@ -41,7 +63,8 @@ jobs:
           xcodebuild \
             -workspace MyApp.xcworkspace \
             -scheme MyApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             clean build | xcpretty
 
       - name: Test
@@ -51,6 +74,7 @@ jobs:
           xcodebuild \
             -workspace MyApp.xcworkspace \
             -scheme MyApp \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=18.0' \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 15,OS=17.5' \
             test | xcpretty
 

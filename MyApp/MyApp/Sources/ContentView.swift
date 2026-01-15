@@ -13,9 +13,6 @@ public struct ContentView: View {
             .padding()
         
         // Test App
-        VStack {
-            Text("Roll back")
-        }
     }
 }
 
